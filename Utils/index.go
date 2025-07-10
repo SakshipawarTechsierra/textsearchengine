@@ -1,13 +1,14 @@
 package utils
 
-// Index maps tokens to document IDs
-type Index map[string][]int
-
-// Add processes and adds all documents to the index
-func (idx Index) Add(docs []Document) {
-	for _, doc := range docs {
-		for _, token := range analyze(doc.Text) {
-			idx[token] = append(idx[token], doc.Id)
+func MatchesAny(tokens, keywords []string) bool {
+	tokenMap := make(map[string]bool)
+	for _, token := range tokens {
+		tokenMap[token] = true
+	}
+	for _, keyword := range keywords {
+		if tokenMap[keyword] {
+			return true
 		}
 	}
+	return false
 }

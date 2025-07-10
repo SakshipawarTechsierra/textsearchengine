@@ -1,40 +1,47 @@
 package main
 
 import (
-	"flag"
+	"fmt"
 	"log"
-	"time"
+	"strings"
 
-	"github.com/SakshipawarTechsierra/textsearchengine/Utils/index"
+	"github.com/sqweek/dialog"
 	"github.com/SakshipawarTechsierra/textsearchengine/Utils"
 )
 
 func main() {
-	var dumpPath, query string
-	flag.StringVar(&dumpPath, "p", "NewCsv.zip", "wiki abstract dump path or zipped CSV")
-	flag.StringVar(&query, "q", "small wild cat", "search query")
-	flag.Parse()
-
-	log.Println("Full text search is in progress...")
-
-	start := time.Now()
-	docs, err := utils.LoadDocuments(dumpPath)
+	filePath, err := dialog.File().Title("Select a .csv or .txt or .zip file").Load()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("❌ File selection cancelled or failed:", err)
 	}
-	log.Printf("Loaded %d documents in %v", len(docs), time.Since(start))
+	fmt.Println("📂 Selected file:", filePath)
 
-	start = time.Now()
-	idx := index.New()
-	idx.Add(docs)
-	log.Printf("Indexed %d documents in %v", len(docs), time.Since(start))
+	fmt.Print("🔍 Enter keyword to search: ")
+	var keyword string
+	fmt.Scanln(&keyword)
+	query := strings.ToLower(keyword)
+	keywords := utils.Filter(utils.Tokenize(query))
 
-	start = time.Now()
-	matchIDs := idx.Search(query)
-	log.Printf("Search found %d documents in %v", len(matchIDs), time.Since(start))
+	var results []utils.MatchResult
+	if strings.HasSuffix(filePath, ".csv") {
+		results, _ = utils.SearchCSVFile(filePath, keywords)
+	} else if strings.HasSuffix(filePath, ".txt") {
+		results, _ = utils.SearchTXTFile(filePath, keywords)
+	} else if strings.HasSuffix(filePath, ".zip") {
+		results, _ = utils.SearchZipFile(filePath, keywords)
+	} else {
+		log.Fatal("❌ Unsupported file type. Only .csv, .txt and .zip allowed.")
+	}
 
-	for _, id := range matchIDs {
-		doc := docs[id]
-		log.Printf("%d\t%s\n", id, doc.Text)
+	if len(results) == 0 {
+		fmt.Println("❌ No matches found.")
+	} else {
+		fmt.Printf("✅ Found %d matches:\n", len(results))
+		for _, r := range results {
+			fmt.Printf("📄 %s (Line %d):\n", r.FileName, r.RowNum)
+			for _, field := range r.RowData {
+				fmt.Printf("  %s\n", field)
+			}
+		}
 	}
 }
